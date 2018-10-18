@@ -1,6 +1,8 @@
 @fitbit/image-codec-txi
 ===============
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/Fitbit/image-codec-txi.svg)](https://greenkeeper.io/)
+
 TXI is an image format used on some Fitbit devices. This package is used to convert a raw bitmap raster to a TXI formatted image that is supported on the device.
 
 ## API
