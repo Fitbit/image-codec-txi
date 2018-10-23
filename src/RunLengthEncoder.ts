@@ -16,17 +16,15 @@ export default class RunLengthEncoder {
   private pixelCount = 0;
   private sectionIndex = 1;
   private willCompress = false;
-  private section: Uint8ClampedArray;
+  private section: Uint8Array;
 
   constructor(bytesPerPixel: number) {
-    this.section = new Uint8ClampedArray((MAX_SECTION_LENGTH * bytesPerPixel) + 1);
+    this.section = new Uint8Array((MAX_SECTION_LENGTH * bytesPerPixel) + 1);
   }
 
   private writePixelToSection(pixel: Pixel) {
-    for (const byte of pixel) {
-      this.section[this.sectionIndex] = byte;
-      this.sectionIndex += 1;
-    }
+    this.section.set(pixel, this.sectionIndex);
+    this.sectionIndex += pixel.length;
     this.pixelCount += 1;
   }
 
@@ -44,7 +42,7 @@ export default class RunLengthEncoder {
   private internalFlush() {
     let out = null;
     if (this.pixelCount > 0) {
-      out = new Uint8Array(this.section.slice(0, this.sectionIndex));
+      out = new Uint8Array(this.section.subarray(0, this.sectionIndex));
       out[0] = this.willCompress ? (MAX_SECTION_LENGTH + 1) : 0;
       out[0] |= this.pixelCount & MAX_SECTION_LENGTH;
     }
@@ -68,7 +66,7 @@ export default class RunLengthEncoder {
       } else {
         out = this.internalFlush();
         this.willCompress = false;
-        this.lastPixel = pixel;
+        this.lastPixel = new Uint8Array(pixel);
       }
     } else if (this.lastPixel && comparePixel(pixel, this.lastPixel)) {
       out = this.internalFlush();
@@ -80,7 +78,7 @@ export default class RunLengthEncoder {
       if (this.lastPixel) this.writePixelToSection(this.lastPixel);
       if (this.isSectionFull) out = this.internalFlush();
 
-      this.lastPixel = pixel;
+      this.lastPixel = new Uint8Array(pixel);
     }
     return out;
   }

@@ -1,4 +1,4 @@
-export type Pixel = number[];
+export type Pixel = Uint8Array;
 
 export interface ImageData {
   width: number;
