@@ -31,40 +31,42 @@ const textureBPP: { [format: number]: number } = {
   [TextureFormat.ABGR6666]: 3,
 };
 
-const pixelEncoders: {[format: number]: (input: Pixel, output: Pixel) => void} = {
-  [TextureFormat.A8]: (input, output) => {
-    output[0] = input[0];
+type PixelEncoder = (data: Uint8Array, offset: number, output: Pixel) => void;
+
+const pixelEncoders: { [format: number]: PixelEncoder } = {
+  [TextureFormat.A8]: (data, offset, output) => {
+    output[0] = data[offset];
   },
-  [TextureFormat.BGRA8888]: (input, output) => {
-    output[0] = input[2];
-    output[1] = input[1];
-    output[2] = input[0];
-    output[3] = input[3];
+  [TextureFormat.BGRA8888]: (data, offset, output) => {
+    output[0] = data[offset + 2];
+    output[1] = data[offset + 1];
+    output[2] = data[offset];
+    output[3] = data[offset + 3];
   },
-  [TextureFormat.ABGR8888]: (input, output) => {
-    output[0] = input[3];
-    output[1] = input[2];
-    output[2] = input[1];
-    output[3] = input[0];
+  [TextureFormat.ABGR8888]: (data, offset, output) => {
+    output[0] = data[offset + 3];
+    output[1] = data[offset + 2];
+    output[2] = data[offset + 1];
+    output[3] = data[offset];
   },
-  [TextureFormat.BGR565]: (input, output) => {
-    const r5 = rescaleColor(input[0], 31);
-    const g6 = rescaleColor(input[1], 63);
-    const b5 = rescaleColor(input[2], 31);
+  [TextureFormat.BGR565]: (data, offset, output) => {
+    const r5 = rescaleColor(data[offset], 31);
+    const g6 = rescaleColor(data[offset + 1], 63);
+    const b5 = rescaleColor(data[offset + 2], 31);
 
     output[0] = 0xFF & ((g6 << 5) | b5); // gggbbbbb
     output[1] = 0xFF & ((g6 >> 3) | (r5 << 3)); // rrrrrggg
   },
-  [TextureFormat.ABGR6666]: (input, output) => {
-    if (input[3] === 0) {
+  [TextureFormat.ABGR6666]: (data, offset, output) => {
+    if (data[offset + 3] === 0) {
       output.fill(0);
       return;
     }
 
-    const r = rescaleColor(input[0], 63);
-    const g = rescaleColor(input[1], 63);
-    const b = rescaleColor(input[2], 63);
-    const a = rescaleColor(input[3], 63);
+    const r = rescaleColor(data[offset], 63);
+    const g = rescaleColor(data[offset + 1], 63);
+    const b = rescaleColor(data[offset + 2], 63);
+    const a = rescaleColor(data[offset + 3], 63);
 
     output[0] = 0xFF & ((b << 6) | a); // bbaaaaaa
     output[1] = 0xFF & ((g << 4) | (b >> 2)); // ggggbbbb
@@ -100,15 +102,15 @@ class TXIEncoder {
   private rle?: RunLengthEncoder;
   private cursor!: BufferCursor;
   private textureFormat!: TextureFormat;
-  private imageData!: Uint32Array;
-  private inputPixel = new Uint8Array(INPUT_FORMAT_BPP);
+  private imageData!: Uint8Array;
   private outputPixel!: Uint8Array;
+  private encoder!: PixelEncoder;
 
   constructor(
     private image: ImageData,
   ) { }
 
-  private emit = (pixel: Pixel) => {
+  private emit(pixel: Pixel) {
     const packed = this.rle ? this.rle.encode(pixel) : pixel;
     if (packed) this.cursor.writeArray(packed);
   }
@@ -127,12 +129,8 @@ class TXIEncoder {
     const offset = this.width * y;
 
     for (let x = 0; x < this.width; x += 1) {
-      const pixel32 = this.imageData[offset + x];
-      this.inputPixel[0] = pixel32 & 0xFF;
-      this.inputPixel[1] = (pixel32 >> 8) & 0xFF;
-      this.inputPixel[2] = (pixel32 >> 16) & 0xFF;
-      this.inputPixel[3] = (pixel32 >> 24) & 0xFF;
-      pixelEncoders[this.textureFormat](this.inputPixel, this.outputPixel);
+      const idx = (offset + x) * INPUT_FORMAT_BPP;
+      this.encoder(this.imageData, idx, this.outputPixel);
       this.emit(this.outputPixel);
     }
 
@@ -190,12 +188,13 @@ class TXIEncoder {
 
   encode({ rle, outputFormat }: { rle: boolean, outputFormat: TXIOutputFormat }) {
     this.textureFormat = findTextureFormat(outputFormat, rle);
+    this.encoder = pixelEncoders[this.textureFormat];
     this.rle = rle ? new RunLengthEncoder(this.outputBPP) : undefined;
 
     this.outputPixel = new Uint8Array(this.outputBPP);
     this.cursor = new BufferCursor(this.maxOutputSize(!!this.rle));
 
-    this.imageData = new Uint32Array(this.image.data.buffer);
+    this.imageData = new Uint8Array(this.image.data.buffer);
     this.process();
 
     const imageDataBuf = this.cursor.slice();
