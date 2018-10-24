@@ -21,7 +21,12 @@ const inputImage = {
 
 const suite = new benchmark.Suite();
 
-suite.add('RGBA6666', () => {
+suite.add('RGBA8888', () => {
+  imageCodecTxi.encode(inputImage, {
+    rle: 'auto',
+    outputFormat: imageCodecTxi.TXIOutputFormat.RGBA8888,
+  });
+}).add('RGBA6666', () => {
   imageCodecTxi.encode(inputImage, {
     rle: 'auto',
     outputFormat: imageCodecTxi.TXIOutputFormat.RGBA6666,
