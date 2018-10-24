@@ -125,9 +125,14 @@ function encodeWithFixedRLE(
   const outputPixel = new Uint8Array(bpp);
   cursor.seek(TXI_HEADER_LENGTH);
 
-  function emit(pixel: Pixel) {
-    const packed = rle ? rle.encode(pixel) : pixel;
-    if (packed) cursor.writeArray(packed);
+  let emit: () => void;
+  if (rle) {
+    emit = () => {
+      const packed = rle.encode(outputPixel);
+      if (packed) cursor.writeArray(packed);
+    };
+  } else {
+    emit = () => cursor.writeArray(outputPixel);
   }
 
   function writeRow(y: number) {
@@ -136,11 +141,11 @@ function encodeWithFixedRLE(
     for (let x = 0; x < width; x += 1) {
       const idx = (offset + x) * INPUT_FORMAT_BPP;
       encoder(imageData, idx, outputPixel);
-      emit(outputPixel);
+      emit();
     }
 
     if (!rle) {
-      emit(outputPixel);
+      emit();
       cursor.seek((cursor.tell() + 3) & ~3);
     }
   }
