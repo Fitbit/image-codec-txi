@@ -1,13 +1,13 @@
 export default class BufferCursor {
   private p = 0;
-  private typedBuffer: Uint8Array;
+  array: Uint8Array;
 
   constructor(public length: number) {
-    this.typedBuffer = new Uint8Array(length);
+    this.array = new Uint8Array(length);
   }
 
   public get buffer() {
-    return this.typedBuffer.buffer;
+    return this.array.buffer;
   }
 
   public seek(offset: number) {
@@ -23,7 +23,7 @@ export default class BufferCursor {
   }
 
   public writeArray(arr: Uint8Array) {
-    this.typedBuffer.set(arr, this.p);
+    this.array.set(arr, this.p);
     this.p += arr.length;
   }
 }

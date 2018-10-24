@@ -116,21 +116,19 @@ function encodeWithFixedRLE(
   const textureFormat = findTextureFormat(options.outputFormat, options.rle);
   const bpp = textureBPP[textureFormat];
   const encoder = pixelEncoders[textureFormat];
-  const rle = options.rle ? new RunLengthEncoder(bpp) : undefined;
 
   const imageData = new Uint8Array(image.data.buffer);
   const { width, height } = image;
 
-  const cursor = new BufferCursor(maxOutputSize(image, options.outputFormat, !!rle));
-  const outputPixel = new Uint8Array(bpp);
+  const cursor = new BufferCursor(maxOutputSize(image, options.outputFormat, options.rle));
   cursor.seek(TXI_HEADER_LENGTH);
+
+  const rle = options.rle ? new RunLengthEncoder(cursor, bpp) : undefined;
+  const outputPixel = new Uint8Array(bpp);
 
   let emit: () => void;
   if (rle) {
-    emit = () => {
-      const packed = rle.encode(outputPixel);
-      if (packed) cursor.writeArray(packed);
-    };
+    emit = () => rle.encode(outputPixel);
   } else {
     emit = () => cursor.writeArray(outputPixel);
   }
@@ -153,8 +151,7 @@ function encodeWithFixedRLE(
   function writeBody() {
     for (let y = 0; y < height; y += 1) writeRow(y);
     if (rle) {
-      const leftovers = rle.flush();
-      if (leftovers) cursor.writeArray(leftovers);
+      rle.flush();
     } else {
       writeRow(height - 1);
     }

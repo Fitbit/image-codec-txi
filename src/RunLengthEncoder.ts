@@ -1,3 +1,4 @@
+import BufferCursor from './BufferCursor';
 import { Pixel } from './types';
 
 function comparePixel(a?: Pixel, b?: Pixel) {
@@ -15,18 +16,18 @@ export default class RunLengthEncoder {
   private lastPixel: Pixel;
   private lastPixelValid = false;
   private pixelCount = 0;
-  private sectionIndex = 1;
+  /** Offset into the destination buffer to place the section header. */
+  private headerIndex: number;
   private willCompress = false;
-  private section: Uint8Array;
 
-  constructor(bytesPerPixel: number) {
-    this.section = new Uint8Array((MAX_SECTION_LENGTH * bytesPerPixel) + 1);
+  constructor(private destination: BufferCursor, private bytesPerPixel: number) {
+    this.headerIndex = this.destination.tell();
     this.lastPixel = new Uint8Array(bytesPerPixel);
   }
 
   private writePixelToSection(pixel: Pixel) {
-    this.section.set(pixel, this.sectionIndex);
-    this.sectionIndex += pixel.length;
+    if (this.pixelCount === 0) this.destination.seek(this.headerIndex + 1);
+    this.destination.writeArray(pixel);
     this.pixelCount += 1;
   }
 
@@ -47,46 +48,40 @@ export default class RunLengthEncoder {
   }
 
   private internalFlush() {
-    let out = null;
     if (this.pixelCount > 0) {
-      out = this.section.slice(0, this.sectionIndex);
-      out[0] = this.willCompress ? (MAX_SECTION_LENGTH + 1) : 0;
-      out[0] |= this.pixelCount & MAX_SECTION_LENGTH;
+      let headerByte = this.willCompress ? (MAX_SECTION_LENGTH + 1) : 0;
+      headerByte |= this.pixelCount & MAX_SECTION_LENGTH;
+      this.destination.array[this.headerIndex] = headerByte;
     }
     this.pixelCount = 0;
-    this.sectionIndex = 1;
-    return out;
+    this.headerIndex = this.destination.tell();
   }
 
   encode(pixel: Pixel) {
-    let out = null;
-
     if (this.willCompress) {
       if (this.lastPixelValid && comparePixel(pixel, this.lastPixel)) {
         this.pixelCount += 1;
 
         if (this.isSectionFull) {
-          out = this.internalFlush();
+          this.internalFlush();
           this.willCompress = false;
           this.lastPixelValid = false;
         }
       } else {
-        out = this.internalFlush();
+        this.internalFlush();
         this.willCompress = false;
         this.setLastPixel(pixel);
       }
     } else if (this.lastPixelValid && comparePixel(pixel, this.lastPixel)) {
-      out = this.internalFlush();
+      this.internalFlush();
       this.willCompress = true;
-      this.sectionIndex = 1;
       this.writePixelToSection(this.lastPixel);
       this.pixelCount = 2;
     } else {
       if (this.lastPixelValid) this.writePixelToSection(this.lastPixel);
-      if (this.isSectionFull) out = this.internalFlush();
+      if (this.isSectionFull) this.internalFlush();
 
       this.setLastPixel(pixel);
     }
-    return out;
   }
 }
