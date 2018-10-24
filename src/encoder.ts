@@ -20,7 +20,7 @@ const TXI_HEADER_LENGTH = 40;
 const INPUT_FORMAT_BPP = 4;
 
 function rescaleColor(value: number, newMax: number) {
-  return Math.round(value / 255 * newMax);
+  return ((value * newMax + 127) / 255) | 0;
 }
 
 const textureBPP: { [format: number]: number } = {
@@ -59,7 +59,9 @@ const pixelEncoders: { [format: number]: PixelEncoder } = {
   },
   [TextureFormat.ABGR6666]: (data, offset, output) => {
     if (data[offset + 3] === 0) {
-      output.fill(0);
+      output[0] = 0;
+      output[1] = 0;
+      output[2] = 0;
       return;
     }
 
