@@ -25,9 +25,9 @@ export default class RunLengthEncoder {
     this.lastPixel = new Uint8Array(bytesPerPixel);
   }
 
-  private writePixelToSection(pixel: Pixel) {
+  private writePixelToSection() {
     if (this.pixelCount === 0) this.destination.seek(this.headerIndex + 1);
-    this.destination.writeArray(pixel);
+    this.destination.writeArray(this.lastPixel);
     this.pixelCount += 1;
   }
 
@@ -42,7 +42,7 @@ export default class RunLengthEncoder {
 
   flush() {
     if (!this.willCompress && this.lastPixelValid) {
-      this.writePixelToSection(this.lastPixel);
+      this.writePixelToSection();
     }
     return this.internalFlush();
   }
@@ -75,10 +75,10 @@ export default class RunLengthEncoder {
     } else if (this.lastPixelValid && comparePixel(pixel, this.lastPixel)) {
       this.internalFlush();
       this.willCompress = true;
-      this.writePixelToSection(this.lastPixel);
+      this.writePixelToSection();
       this.pixelCount = 2;
     } else {
-      if (this.lastPixelValid) this.writePixelToSection(this.lastPixel);
+      if (this.lastPixelValid) this.writePixelToSection();
       if (this.isSectionFull) this.internalFlush();
 
       this.setLastPixel(pixel);
