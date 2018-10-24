@@ -87,136 +87,111 @@ function findTextureFormat(outputFormat: TXIOutputFormat, rle: boolean) {
   throw new Error(`No known texture format for TXI output format ${outputFormat}`);
 }
 
-function arrayBufferConcat(buffers: ArrayBuffer[]) {
-  const totalLength = buffers.reduce((acc, buf) => acc + buf.byteLength, 0);
-  const combined = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const buf of buffers) {
-    combined.set(new Uint8Array(buf), offset);
-    offset += buf.byteLength;
-  }
-  return combined.buffer;
+function maxOutputSize(
+  image: ImageData,
+  outputFormat: TXIOutputFormat,
+  withRLE: boolean,
+) {
+  const { width, height } = image;
+  const bpp = textureBPP[findTextureFormat(outputFormat, withRLE)];
+
+  // RLE has no padding or duplicated rows, but in the worst case where nothing
+  // can be compressed incurs a 1-byte per pixel overhead
+  const maxBytesWithRLE = width * height * (bpp + 1);
+
+  // Without RLE, the worst case is more complex:
+  // - The final row is duplicated, so height + 1.
+  // - For each row, the final pixel is duplicated, so width + 1.
+  // - Each row is padded up to a 32-bit boundary, so add a possible
+  // 3 bytes for each row we write.
+  const maxBytesWithoutRLE = ((width + 1) * (height + 1) * bpp) + ((height + 1) * 3);
+
+  return (withRLE ? maxBytesWithRLE : maxBytesWithoutRLE) + TXI_HEADER_LENGTH;
 }
 
-class TXIEncoder {
-  private rle?: RunLengthEncoder;
-  private cursor!: BufferCursor;
-  private textureFormat!: TextureFormat;
-  private imageData!: Uint8Array;
-  private outputPixel!: Uint8Array;
-  private encoder!: PixelEncoder;
+function encodeWithFixedRLE(
+  image: ImageData,
+  options: { outputFormat: TXIOutputFormat, rle: boolean},
+) {
+  const textureFormat = findTextureFormat(options.outputFormat, options.rle);
+  const bpp = textureBPP[textureFormat];
+  const encoder = pixelEncoders[textureFormat];
+  const rle = options.rle ? new RunLengthEncoder(bpp) : undefined;
 
-  constructor(
-    private image: ImageData,
-  ) { }
+  const imageData = new Uint8Array(image.data.buffer);
+  const { width, height } = image;
 
-  private emit(pixel: Pixel) {
-    const packed = this.rle ? this.rle.encode(pixel) : pixel;
-    if (packed) this.cursor.writeArray(packed);
+  const cursor = new BufferCursor(maxOutputSize(image, options.outputFormat, !!rle));
+  const outputPixel = new Uint8Array(bpp);
+  cursor.seek(TXI_HEADER_LENGTH);
+
+  function emit(pixel: Pixel) {
+    const packed = rle ? rle.encode(pixel) : pixel;
+    if (packed) cursor.writeArray(packed);
   }
 
-  private process() {
-    for (let y = 0; y < this.height; y += 1) this.processRow(y);
-    if (this.rle) {
-      const leftovers = this.rle.flush();
-      if (leftovers) this.cursor.writeArray(leftovers);
-    } else {
-      this.processRow(this.height - 1);
-    }
-  }
+  function writeRow(y: number) {
+    const offset = width * y;
 
-  private processRow(y: number) {
-    const offset = this.width * y;
-
-    for (let x = 0; x < this.width; x += 1) {
+    for (let x = 0; x < width; x += 1) {
       const idx = (offset + x) * INPUT_FORMAT_BPP;
-      this.encoder(this.imageData, idx, this.outputPixel);
-      this.emit(this.outputPixel);
+      encoder(imageData, idx, outputPixel);
+      emit(outputPixel);
     }
 
-    if (!this.rle) {
-      this.emit(this.outputPixel);
-      this.cursor.seek((this.cursor.tell() + 3) & ~3);
+    if (!rle) {
+      emit(outputPixel);
+      cursor.seek((cursor.tell() + 3) & ~3);
     }
   }
 
-  get width() {
-    return this.image.width;
+  function writeBody() {
+    for (let y = 0; y < height; y += 1) writeRow(y);
+    if (rle) {
+      const leftovers = rle.flush();
+      if (leftovers) cursor.writeArray(leftovers);
+    } else {
+      writeRow(height - 1);
+    }
   }
 
-  get height() {
-    return this.image.height;
-  }
+  function writeHeader() {
+    let formatType = textureFormat;
+    if (rle) formatType |= TextureCompression.RLE;
 
-  get outputBPP() {
-    return textureBPP[this.textureFormat];
-  }
+    const imageDataLen = cursor.tell() - TXI_HEADER_LENGTH;
 
-  private buildHeader(imageDataLen: number) {
-    let formatType = this.textureFormat;
-    if (this.rle) formatType |= TextureCompression.RLE;
-
-    return new Uint32Array([
+    const dv = new DataView(cursor.buffer);
+    [
       TXI_FILE_TYPE,
       TXI_FILE_VERSION,
       imageDataLen,
       0, // data offset (bytes)
       formatType,
-      this.rle ? 0 : 1,
-      this.width,
-      this.height,
+      rle ? 0 : 1,
+      width,
+      height,
       imageDataLen,
       0xDEADBEEF,
-    ]).buffer;
+    ].forEach((val, index) => dv.setUint32(index * 4, val, true));
   }
 
-  maxOutputSize(withRLE: boolean) {
-    // RLE has no padding or duplicated rows, but in the worst case where nothing
-    // can be compressed incurs a 1-byte per pixel overhead
-    const maxBytesWithRLE = this.width * this.height * (this.outputBPP + 1);
+  writeBody();
+  writeHeader();
 
-    // Without RLE, the worst case is more complex:
-    // - The final row is duplicated, so height + 1.
-    // - For each row, the final pixel is duplicated, so width + 1.
-    // - Each row is padded up to a 32-bit boundary, so add a possible
-    // 3 bytes for each row we write.
-    const maxBytesWithoutRLE =
-      ((this.width + 1) * (this.height + 1) * this.outputBPP) + ((this.height + 1) * 3);
-
-    return withRLE ? maxBytesWithRLE : maxBytesWithoutRLE;
-  }
-
-  encode({ rle, outputFormat }: { rle: boolean, outputFormat: TXIOutputFormat }) {
-    this.textureFormat = findTextureFormat(outputFormat, rle);
-    this.encoder = pixelEncoders[this.textureFormat];
-    this.rle = rle ? new RunLengthEncoder(this.outputBPP) : undefined;
-
-    this.outputPixel = new Uint8Array(this.outputBPP);
-    this.cursor = new BufferCursor(this.maxOutputSize(!!this.rle));
-
-    this.imageData = new Uint8Array(this.image.data.buffer);
-    this.process();
-
-    const imageDataBuf = this.cursor.slice();
-    const headerBuf = this.buildHeader(imageDataBuf.byteLength);
-    return arrayBufferConcat([headerBuf, imageDataBuf]);
-  }
+  return cursor.slice();
 }
 
 export function encode(image: ImageData, options: TXIEncoderOptions) {
   const outputFormat = options.outputFormat || TXIOutputFormat.RGBA8888;
 
-  const encoder = new TXIEncoder(image);
   if (options.rle !== 'auto') {
-    return encoder.encode({
-      outputFormat,
-      rle: !!options.rle,
-    });
+    return encodeWithFixedRLE(image, { outputFormat, rle: !!options.rle });
   }
 
-  const withRLE = encoder.encode({ outputFormat, rle: true });
-  const sizeWithoutRLE = encoder.maxOutputSize(false) + TXI_HEADER_LENGTH;
+  const withRLE = encodeWithFixedRLE(image, { outputFormat, rle: true });
+  const sizeWithoutRLE = maxOutputSize(image, outputFormat, false);
   if (withRLE.byteLength <= sizeWithoutRLE) return withRLE;
 
-  return encoder.encode({ outputFormat, rle: false });
+  return encodeWithFixedRLE(image, { outputFormat, rle: false });
 }
