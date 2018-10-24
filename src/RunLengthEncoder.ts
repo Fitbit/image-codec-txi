@@ -1,8 +1,8 @@
 import BufferCursor from './BufferCursor';
 import { Pixel } from './types';
 
-function comparePixel(a?: Pixel, b?: Pixel) {
-  if (!a || !b) return false;
+function comparePixel(a: Pixel, b: Pixel) {
+  if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) {
     if (a[i] !== b[i]) return false;
   }
@@ -20,7 +20,7 @@ export default class RunLengthEncoder {
   private headerIndex: number;
   private willCompress = false;
 
-  constructor(private destination: BufferCursor, private bytesPerPixel: number) {
+  constructor(private destination: BufferCursor, bytesPerPixel: number) {
     this.headerIndex = this.destination.tell();
     this.lastPixel = new Uint8Array(bytesPerPixel);
   }
