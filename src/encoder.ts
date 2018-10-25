@@ -23,6 +23,7 @@ function rescaleColor(value: number, newMax: number) {
   return ((value * newMax + 127) / 255) | 0;
 }
 
+// BPP = bytes per pixel
 const textureBPP: { [format: number]: number } = {
   [TextureFormat.A8]: 1,
   [TextureFormat.BGRA8888]: 4,
