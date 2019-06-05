@@ -18,6 +18,7 @@
     "build": "rm -rf lib mod && tsc -p tsconfig.build.json && tsc -p tsconfig.module.json",
     "lint": "tslint -c tslint.json -p tsconfig.json",
     "test": "npm run lint && jest",
+    "test:coveralls": "npm run lint && jest --coverage --coverageReporters=text-lcov | coveralls",
     "prepublishOnly": "npm run test && npm run build",
     "benchmark": "ts-node bench.ts"
   },
@@ -27,6 +28,7 @@
     "@types/node": "^11.10.4",
     "@types/pngjs": "^3.3.0",
     "benchmark": "^2.1.4",
+    "coveralls": "^3.0.3",
     "jest": "^24.1.0",
     "microtime": "^3.0.0",
     "pngjs": "^3.3.3",
