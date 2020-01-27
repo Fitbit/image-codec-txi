@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@types/benchmark": "^1.0.31",
-    "@types/jest": "^24.0.23",
+    "@types/jest": "^25.1.0",
     "@types/node": "^12.12.15",
     "@types/pngjs": "^3.4.0",
     "benchmark": "^2.1.4",
