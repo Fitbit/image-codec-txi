@@ -32,7 +32,7 @@
     "jest": "^25.1.0",
     "microtime": "^3.0.0",
     "pngjs": "^3.4.0",
-    "ts-jest": "^25.2.1",
+    "ts-jest": "^26.0.0",
     "ts-node": "^8.7.0",
     "tslint": "^6.1.0",
     "tslint-config-airbnb": "^5.11.2",
