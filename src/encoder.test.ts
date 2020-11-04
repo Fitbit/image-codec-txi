@@ -31,7 +31,9 @@ function checkImage(
     height: uncompressed.height,
   };
 
-  const actualCompressed = Buffer.from(encode(inputImage, { rle, outputFormat }));
+  const actualCompressed = Buffer.from(
+    encode(inputImage, { rle, outputFormat }),
+  );
 
   let expectedCompressedPath = `${filename}.txi.${outputFormat.toLowerCase()}`;
   if (rle !== false && expectRLEIsSmaller) expectedCompressedPath += '.rle';
@@ -43,45 +45,46 @@ function checkImage(
 
 for (const withRLE of [true, false]) {
   describe(`with RLE encoding ${withRLE ? 'enabled' : 'disabled'}`, () => {
-    it('converts an RGB PNG to RGBA8888', () => checkImage('rgb_image', withRLE));
+    it('converts an RGB PNG to RGBA8888', () =>
+      checkImage('rgb_image', withRLE));
     it('converts an RGB PNG to RGB565', () =>
       checkImage('rgb_image', withRLE, TXIOutputFormat.RGB565));
     it('converts an RGB PNG to RGBA6666', () =>
       checkImage('rgb_image', withRLE, TXIOutputFormat.RGBA6666));
     it('converts a paletted PNG', () => checkImage('palette', withRLE));
-    it('converts a 1-bit PNG', () => checkImage('1bit', withRLE, TXIOutputFormat.A8));
+    it('converts a 1-bit PNG', () =>
+      checkImage('1bit', withRLE, TXIOutputFormat.A8));
     it('converts a very small image', () => checkImage('tiny', withRLE));
-    it('converts an image that exceeds the worst case size when padded',
-       () => checkImage('rle_increases_size', withRLE));
-    it('converts a PNG that leaves no RLE leftover bytes to flush',
-       () => checkImage('rle_no_leftovers', withRLE));
-    it('converts an image that is larger when RLE encoded than unencoded',
-       () => checkImage('greyscale_bands', withRLE, TXIOutputFormat.A8));
+    it('converts an image that exceeds the worst case size when padded', () =>
+      checkImage('rle_increases_size', withRLE));
+    it('converts a PNG that leaves no RLE leftover bytes to flush', () =>
+      checkImage('rle_no_leftovers', withRLE));
+    it('converts an image that is larger when RLE encoded than unencoded', () =>
+      checkImage('greyscale_bands', withRLE, TXIOutputFormat.A8));
   });
 }
 
-it('returns the smaller output if RLE mode is set to auto',
-   () => checkImage('greyscale_bands', 'auto', TXIOutputFormat.A8, false));
+it('returns the smaller output if RLE mode is set to auto', () =>
+  checkImage('greyscale_bands', 'auto', TXIOutputFormat.A8, false));
 
 const PNG_SUITE_DIR = 'PngSuite-2017jul19';
 
 describe('readPNG', () => {
-  const pngSuite = fs.readdirSync(testResourcePath(PNG_SUITE_DIR))
-    .filter(file => file.endsWith('.png'));
-  const validPNGs = pngSuite.filter(file => !file.startsWith('x'));
-  const corruptPNGs = pngSuite.filter(file => file.startsWith('x'));
+  const pngSuite = fs
+    .readdirSync(testResourcePath(PNG_SUITE_DIR))
+    .filter((file) => file.endsWith('.png'));
+  const validPNGs = pngSuite.filter((file) => !file.startsWith('x'));
+  const corruptPNGs = pngSuite.filter((file) => file.startsWith('x'));
 
   describe('given a valid PNG file', () => {
     it.each(validPNGs)('reads %s', (vector) => {
-      expect(readPNG(loadTestResource(PNG_SUITE_DIR, vector)))
-        .toBeDefined();
+      expect(readPNG(loadTestResource(PNG_SUITE_DIR, vector))).toBeDefined();
     });
   });
 
   describe('given a corrupt PNG file', () => {
     it.each(corruptPNGs)('rejects %s', (vector) => {
-      expect(() => readPNG(loadTestResource(PNG_SUITE_DIR, vector)))
-        .toThrow();
+      expect(() => readPNG(loadTestResource(PNG_SUITE_DIR, vector))).toThrow();
     });
   });
 
@@ -103,8 +106,6 @@ describe('readPNG', () => {
 
   describe('given an ArrayBuffer', () => {
     it('reads the file', () =>
-      expect(readPNG(loadTestResource('tiny.png')))
-        .toBeDefined(),
-    );
+      expect(readPNG(loadTestResource('tiny.png'))).toBeDefined());
   });
 });

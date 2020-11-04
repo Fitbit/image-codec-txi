@@ -12,7 +12,6 @@ function comparePixel(a: Pixel, b: Pixel) {
 const MAX_SECTION_LENGTH = 127;
 
 export default class RunLengthEncoder {
-
   private lastPixel: Pixel;
   private lastPixelValid = false;
   private pixelCount = 0;
@@ -49,7 +48,7 @@ export default class RunLengthEncoder {
 
   private internalFlush() {
     if (this.pixelCount > 0) {
-      let headerByte = this.willCompress ? (MAX_SECTION_LENGTH + 1) : 0;
+      let headerByte = this.willCompress ? MAX_SECTION_LENGTH + 1 : 0;
       headerByte |= this.pixelCount & MAX_SECTION_LENGTH;
       this.destination.array[this.headerIndex] = headerByte;
     }

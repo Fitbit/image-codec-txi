@@ -7,14 +7,14 @@ enum TextureFormat {
   BGR565 = 0x01100565,
   BGRA8888 = 0x01208888,
   ABGR6666 = 0x02186666,
-  ABGR8888 =  0x02208888,
+  ABGR8888 = 0x02208888,
 }
 
 const enum TextureCompression {
   RLE = 0x10000000,
 }
 
-const TXI_FILE_TYPE = 0x0A697874;
+const TXI_FILE_TYPE = 0x0a697874;
 const TXI_FILE_VERSION = 0x20000028;
 const TXI_HEADER_LENGTH = 40;
 const INPUT_FORMAT_BPP = 4;
@@ -55,8 +55,8 @@ const pixelEncoders: { [format: number]: PixelEncoder } = {
     const g6 = rescaleColor(data[offset + 1], 63);
     const b5 = rescaleColor(data[offset + 2], 31);
 
-    output[0] = 0xFF & ((g6 << 5) | b5); // gggbbbbb
-    output[1] = 0xFF & ((g6 >> 3) | (r5 << 3)); // rrrrrggg
+    output[0] = 0xff & ((g6 << 5) | b5); // gggbbbbb
+    output[1] = 0xff & ((g6 >> 3) | (r5 << 3)); // rrrrrggg
   },
   [TextureFormat.ABGR6666]: (data, offset, output) => {
     if (data[offset + 3] === 0) {
@@ -71,9 +71,9 @@ const pixelEncoders: { [format: number]: PixelEncoder } = {
     const b = rescaleColor(data[offset + 2], 63);
     const a = rescaleColor(data[offset + 3], 63);
 
-    output[0] = 0xFF & ((b << 6) | a); // bbaaaaaa
-    output[1] = 0xFF & ((g << 4) | (b >> 2)); // ggggbbbb
-    output[2] = 0xFF & ((r << 2) | (g >> 4)); // rrrrrrgg
+    output[0] = 0xff & ((b << 6) | a); // bbaaaaaa
+    output[1] = 0xff & ((g << 4) | (b >> 2)); // ggggbbbb
+    output[2] = 0xff & ((r << 2) | (g >> 4)); // rrrrrrgg
   },
 };
 
@@ -82,12 +82,17 @@ function findTextureFormat(outputFormat: TXIOutputFormat, rle: boolean) {
     return rle ? TextureFormat.ABGR8888 : TextureFormat.BGRA8888;
   }
   switch (outputFormat) {
-    case TXIOutputFormat.A8: return TextureFormat.A8;
-    case TXIOutputFormat.RGB565: return TextureFormat.BGR565;
-    case TXIOutputFormat.RGBA6666: return TextureFormat.ABGR6666;
+    case TXIOutputFormat.A8:
+      return TextureFormat.A8;
+    case TXIOutputFormat.RGB565:
+      return TextureFormat.BGR565;
+    case TXIOutputFormat.RGBA6666:
+      return TextureFormat.ABGR6666;
   }
 
-  throw new Error(`No known texture format for TXI output format ${outputFormat}`);
+  throw new Error(
+    `No known texture format for TXI output format ${outputFormat}`,
+  );
 }
 
 function maxOutputSize(
@@ -107,14 +112,15 @@ function maxOutputSize(
   // - For each row, the final pixel is duplicated, so width + 1.
   // - Each row is padded up to a 32-bit boundary, so add a possible
   // 3 bytes for each row we write.
-  const maxBytesWithoutRLE = ((width + 1) * (height + 1) * bpp) + ((height + 1) * 3);
+  const maxBytesWithoutRLE =
+    (width + 1) * (height + 1) * bpp + (height + 1) * 3;
 
   return (withRLE ? maxBytesWithRLE : maxBytesWithoutRLE) + TXI_HEADER_LENGTH;
 }
 
 function encodeWithFixedRLE(
   image: ImageData,
-  options: { outputFormat: TXIOutputFormat, rle: boolean},
+  options: { outputFormat: TXIOutputFormat; rle: boolean },
 ) {
   const textureFormat = findTextureFormat(options.outputFormat, options.rle);
   const bpp = textureBPP[textureFormat];
@@ -123,7 +129,9 @@ function encodeWithFixedRLE(
   const imageData = new Uint8Array(image.data.buffer);
   const { width, height } = image;
 
-  const cursor = new BufferCursor(maxOutputSize(image, options.outputFormat, options.rle));
+  const cursor = new BufferCursor(
+    maxOutputSize(image, options.outputFormat, options.rle),
+  );
   cursor.seek(TXI_HEADER_LENGTH);
 
   const rle = options.rle ? new RunLengthEncoder(cursor, bpp) : undefined;
@@ -177,7 +185,7 @@ function encodeWithFixedRLE(
       width,
       height,
       imageDataLen,
-      0xDEADBEEF,
+      0xdeadbeef,
     ].forEach((val, index) => dv.setUint32(index * 4, val, true));
   }
 
