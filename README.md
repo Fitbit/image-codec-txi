@@ -32,6 +32,7 @@ TXI is an image format used on some Fitbit devices. This package is used to conv
 ```
 {
   RGB565 = 'RGB565',
+  RGBA4444 = 'RGBA4444',
   RGBA6666 = 'RGBA6666',
   RGBA8888 = 'RGBA8888',
   A8 = 'A8',

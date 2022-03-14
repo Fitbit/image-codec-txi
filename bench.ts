@@ -26,6 +26,12 @@ suite
       outputFormat: imageCodecTxi.TXIOutputFormat.RGBA8888,
     });
   })
+  .add('RGBA4444', () => {
+    imageCodecTxi.encode(inputImage, {
+      rle: 'auto',
+      outputFormat: imageCodecTxi.TXIOutputFormat.RGBA4444,
+    });
+  })
   .add('RGBA6666', () => {
     imageCodecTxi.encode(inputImage, {
       rle: 'auto',

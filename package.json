@@ -1,6 +1,6 @@
 {
   "name": "@fitbit/image-codec-txi",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "TXI image format encoder library",
   "files": [
     "lib",
