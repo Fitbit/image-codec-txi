@@ -6,6 +6,7 @@ enum TextureFormat {
   A8 = 0x00080008,
   BGR565 = 0x01100565,
   BGRA8888 = 0x01208888,
+  ABGR4444 = 0x02104444,
   ABGR6666 = 0x02186666,
   ABGR8888 = 0x02208888,
 }
@@ -30,6 +31,7 @@ const textureBPP: { [format: number]: number } = {
   [TextureFormat.ABGR8888]: 4,
   [TextureFormat.BGR565]: 2,
   [TextureFormat.ABGR6666]: 3,
+  [TextureFormat.ABGR4444]: 2,
 };
 
 type PixelEncoder = (data: Uint8Array, offset: number, output: Pixel) => void;
@@ -57,6 +59,21 @@ const pixelEncoders: { [format: number]: PixelEncoder } = {
 
     output[0] = 0xff & ((g6 << 5) | b5); // gggbbbbb
     output[1] = 0xff & ((g6 >> 3) | (r5 << 3)); // rrrrrggg
+  },
+  [TextureFormat.ABGR4444]: (data, offset, output) => {
+    if (data[offset + 3] === 0) {
+      output[0] = 0;
+      output[1] = 0;
+      return;
+    }
+
+    const r = rescaleColor(data[offset], 15);
+    const g = rescaleColor(data[offset + 1], 15);
+    const b = rescaleColor(data[offset + 2], 15);
+    const a = rescaleColor(data[offset + 3], 15);
+
+    output[0] = 0xff & ((b << 4) | a); // bbbbaaaa
+    output[1] = 0xff & ((r << 4) | g); // rrrrgggg
   },
   [TextureFormat.ABGR6666]: (data, offset, output) => {
     if (data[offset + 3] === 0) {
@@ -86,6 +103,8 @@ function findTextureFormat(outputFormat: TXIOutputFormat, rle: boolean) {
       return TextureFormat.A8;
     case TXIOutputFormat.RGB565:
       return TextureFormat.BGR565;
+    case TXIOutputFormat.RGBA4444:
+      return TextureFormat.ABGR4444;
     case TXIOutputFormat.RGBA6666:
       return TextureFormat.ABGR6666;
   }

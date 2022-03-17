@@ -49,6 +49,8 @@ for (const withRLE of [true, false]) {
       checkImage('rgb_image', withRLE));
     it('converts an RGB PNG to RGB565', () =>
       checkImage('rgb_image', withRLE, TXIOutputFormat.RGB565));
+    it('converts an RGB PNG to RGBA4444', () =>
+      checkImage('rgb_image', withRLE, TXIOutputFormat.RGBA4444));
     it('converts an RGB PNG to RGBA6666', () =>
       checkImage('rgb_image', withRLE, TXIOutputFormat.RGBA6666));
     it('converts a paletted PNG', () => checkImage('palette', withRLE));
@@ -100,6 +102,14 @@ describe('readPNG', () => {
       it('decodes transparent pixels as transparent', async () => {
         const png = readPNG(loadTestResource('transparency-palette.png'));
         expect(png.data[3]).toBe(0);
+      });
+
+      it('goes through the RGBA4444 corner cases', () => {
+        checkImage('transparency-palette', 'auto', TXIOutputFormat.RGBA4444);
+      });
+
+      it('goes through the RGBA6666 corner cases', () => {
+        checkImage('transparency-palette', 'auto', TXIOutputFormat.RGBA6666);
       });
     });
   });
